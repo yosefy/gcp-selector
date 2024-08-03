@@ -219,8 +219,27 @@ const services = [
 
 
 
-function onDOMContentLoaded() {
-    chrome.storage.local.get(storageKeyProjectIDs, function (result) {
+document.addEventListener("DOMContentLoaded", function() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        const url = new URL(tabs[0].url);
+        const projectName = url.searchParams.get('project');
+        const serviceURL = tabs[0].url;
+        const serviceName = getServiceNameFromURL(serviceURL);
+        
+        if (projectName) {
+            document.getElementById(htmlKeyProjectID).value = projectName;
+        }
+        
+        if (serviceURL) {
+            document.getElementById(htmlKeyServiceURL).value = serviceURL;
+        }
+
+        if (serviceName) {
+            document.getElementById(htmlKeyServiceName).value = serviceName;
+        }
+    });
+
+    chrome.storage.local.get(storageKeyProjectIDs, function(result) {
         let projects = result[storageKeyProjectIDs] || [];
 
         const projectAutoCompleteJS = new autoComplete({
@@ -256,31 +275,38 @@ function onDOMContentLoaded() {
                     selection: function handleServiceSelection(event) {
                         const selection = event.detail.selection.value;
                         serviceAutoCompleteJS.input.value = selection['title'];
-                        document.getElementById(htmlKeyServiceURL).value = selection['url']
-
-                        openServiceURL();
+                        document.getElementById(htmlKeyServiceURL).value = selection['url'];
                     }
                 }
             }
         });
+
+        // Remove event listener for Enter key press on the project name input
+        document.getElementById(htmlKeyProjectID).removeEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                openServiceURL();
+            }
+        });
+
+        // Add event listener for Enter key press only on the service name input
+        document.getElementById(htmlKeyServiceName).addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                openServiceURL();
+            }
+        });
     });
+});
+
+function getServiceNameFromURL(url) {
+    const service = services.find(service => url.startsWith(service.url));
+    return service ? service.title : '';
 }
 
 function openServiceURL() {
     const projectName = document.getElementById(htmlKeyProjectID).value;
     const serviceURL = document.getElementById(htmlKeyServiceURL).value;
-
-    const url = serviceURL + '?project=' + projectName;
-
-    // Open the URL in a new tab
-    window.open(url, '_blank');
+    const url = new URL(serviceURL);
+    url.searchParams.set('project', projectName);
+    console.log(`Opening URL: ${url.toString()}`);
+    window.open(url.toString(), '_blank');
 }
-
-document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
-document.getElementById(htmlKeyGoToOptions).addEventListener('click', function () {
-    if (chrome.runtime.openOptionsPage) {
-        chrome.runtime.openOptionsPage();
-    } else {
-        window.open(chrome.runtime.getURL('../option.html'));
-    }
-});
