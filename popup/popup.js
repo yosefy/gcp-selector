@@ -114,6 +114,10 @@ const services = [
         "url": "https://console.cloud.google.com/compute/instanceGroups/list"
     },
     {
+        "title": "Instance Templates",
+        "url": "https://console.cloud.google.com/compute/instanceTemplates/list"
+    },
+    {
         "title": "KMS",
         "url": "https://console.cloud.google.com/security/kms"
     },
