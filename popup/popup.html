@@ -10,13 +10,14 @@
 
 <body>
     <h1 class="extension-title">GCP Selector</h1>
-    <form>
+    <div class="option-button-wrapper">
+        <button id="htmlKeyGoToOptions">Project Setting Page</button>
+    </div>
+    <form autocomplete="off">
         <div class="autoComplete_wrapper">
-            <div class="option-button-wrapper">
-                <button id="htmlKeyGoToOptions">Project Setting Page</button>
-            </div>
             <label for="project">Project ID</label>
             <input type="text" id="htmlKeyProjectID" name="project" autofocus>
+
         </div>
         <div class="autoComplete_wrapper">
             <label for="service">Service Name</label>
@@ -24,6 +25,13 @@
             <input type="hidden" id="htmlKeyServiceURL" name="service-url">
         </div>
     </form>
+
+    <table id="opened_already">
+        <tr>
+          <!-- <th>Project</th> -->
+          <th>Opened Services</th>
+        </tr>
+      </table>
 </body>
 
 <script src="../vendor/autocompletejs/dist/autoComplete.min.js"></script>
