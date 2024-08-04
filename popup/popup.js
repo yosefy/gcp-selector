@@ -210,14 +210,21 @@ const services = [
         "url": "https://console.cloud.google.com/workflows"
     },
     {
+        "title": "Machiene Images",
+        "url": "https://console.cloud.google.com/compute/machineImages"
+    },
+    {
         "title": "Cloud Armor",
         "url": "https://console.cloud.google.com/net-security/securitypolicies/list"
     }
 ];
 
-
-
-
+function extractServiceURL(url) {
+    const regex = /(https:\/\/[^\/?]+\.\w+\/[^\/?]+\/[^\/?]+)(?:$|\/|\?)/;
+    const match = url.match(regex);
+    const extractedURL = match ? match[1] : null;
+    return extractedURL;
+}
 
 document.addEventListener("DOMContentLoaded", function() {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
@@ -228,15 +235,65 @@ document.addEventListener("DOMContentLoaded", function() {
         
         if (projectName) {
             document.getElementById(htmlKeyProjectID).value = projectName;
+            document.getElementById(htmlKeyProjectID).select();
         }
         
         if (serviceURL) {
-            document.getElementById(htmlKeyServiceURL).value = serviceURL;
+            document.getElementById(htmlKeyServiceURL).value = extractServiceURL(serviceURL);
         }
 
         if (serviceName) {
             document.getElementById(htmlKeyServiceName).value = serviceName;
         }
+    });
+
+    chrome.tabs.query({  currentWindow: true }, function(tabs) {
+        const matchingServices = [];
+
+        tabs.forEach(tab => {
+            if (tab.url.startsWith("https://console.cloud.google.com")) {
+                const matchingService = services.find(service => tab.url.startsWith(service.url));
+                if (matchingService) {
+                    matchingServices.push({
+                        service: matchingService,
+                        tab: tab
+                    });
+                }
+            }
+        });
+
+        matchingServices.sort((a, b) => {
+            const serviceA = a.service.title.toLowerCase();
+            const serviceB = b.service.title.toLowerCase();
+            if (serviceA < serviceB) {
+                return -1;
+            }
+            if (serviceA > serviceB) {
+                return 1;
+            }
+            return 0;
+        });
+
+        const table = document.getElementById("opened_already");
+        table.innerHTML = ""; // Clear existing table
+        table.createTHead().insertRow().innerHTML = "<th style='text-align: left'>Service</th><th style='text-align: left'>Project</th>";
+        matchingServices.forEach(match => {
+            const row = table.insertRow();
+            const titleCell = row.insertCell(0);
+            const titleLink = document.createElement("a");
+            titleLink.href = match.tab.url;
+            titleLink.textContent = match.service.title;
+            titleCell.appendChild(titleLink);
+            const projectCell = row.insertCell(1);
+            const url = new URL(match.tab.url);
+            const projectName = url.searchParams.get('project');
+            projectCell.innerHTML = projectName;
+
+            // Add click event listener to switch to the tab
+            row.addEventListener('click', function() {
+                chrome.tabs.update(match.tab.id, { active: true });
+            });
+        });
     });
 
     chrome.storage.local.get(storageKeyProjectIDs, function(result) {
@@ -250,12 +307,15 @@ document.addEventListener("DOMContentLoaded", function() {
             resultItem: {
                 highlight: true
             },
+            resultsList: {
+                tabSelect: true
+            },
             events: {
                 input: {
                     selection: function handleProjectSelection(event) {
                         const selection = event.detail.selection.value;
                         projectAutoCompleteJS.input.value = selection;
-                        document.getElementById(htmlKeyServiceName).focus();
+ 
                     }
                 }
             }
@@ -297,6 +357,16 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+
+
+document.getElementById(htmlKeyGoToOptions).addEventListener('click', function () {
+    if (chrome.runtime.openOptionsPage) {
+        chrome.runtime.openOptionsPage();
+    } else {
+        window.open(chrome.runtime.getURL('../option.html'));
+    }
+});
+
 function getServiceNameFromURL(url) {
     const service = services.find(service => url.startsWith(service.url));
     return service ? service.title : '';
@@ -308,5 +378,13 @@ function openServiceURL() {
     const url = new URL(serviceURL);
     url.searchParams.set('project', projectName);
     console.log(`Opening URL: ${url.toString()}`);
-    window.open(url.toString(), '_blank');
+
+    chrome.tabs.query({ url: url.origin + '/*' }, function(tabs) {
+        const matchingTab = tabs.find(tab => tab.url.startsWith(url.origin) && tab.url.includes(url.searchParams.toString()));
+        if (matchingTab) {
+            chrome.tabs.update(matchingTab.id, { active: true });
+        } else {
+            window.open(url.toString(), '_blank');
+        }
+    });
 }
